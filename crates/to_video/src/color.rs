@@ -38,7 +38,7 @@ impl TryFrom<&str> for Color {
             let value = value.strip_prefix('#').unwrap();
             if value.len() != 6 {
                 return Err("value starts_with # but not a color".into());
-            };
+            }
             let r = u8::from_str_radix(&value[0..2], 16)
                 .map_err(|_| "value starts_with # but not a color")?;
             let g = u8::from_str_radix(&value[2..4], 16)

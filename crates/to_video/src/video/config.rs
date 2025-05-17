@@ -70,21 +70,18 @@ impl VideoConfigBuilder {
             return Err("step is shorter than overlap".into());
         }
 
-        let work_dir = match self.work_dir {
-            Some(work_dir) => {
-                if !work_dir.exists() {
-                    return Err("work_dir is set but does not exist".into());
-                }
-                work_dir
+        let work_dir = if let Some(work_dir) = self.work_dir {
+            if !work_dir.exists() {
+                return Err("work_dir is set but does not exist".into());
             }
-            None => {
-                let default_work_dir = std::env::current_dir()?.join("work");
-                println!("Using default work_dir: {}", default_work_dir.display());
-                if !default_work_dir.exists() {
-                    std::fs::create_dir_all(&default_work_dir)?;
-                }
-                default_work_dir
+            work_dir
+        } else {
+            let default_work_dir = std::env::current_dir()?.join("work");
+            println!("Using default work_dir: {}", default_work_dir.display());
+            if !default_work_dir.exists() {
+                std::fs::create_dir_all(&default_work_dir)?;
             }
+            default_work_dir
         };
 
         let font = match self.font {

@@ -90,7 +90,7 @@ pub fn parse() -> Result<(Option<VideoConfigBuilder>, Vec<Slide>)> {
         .map(|d| {
             let mut slide = Slide::new_default(slide_default);
             let mut d = d.iter();
-            for o in operations.iter() {
+            for o in &operations {
                 match o {
                     Operation::Text(scale, color, pos) => {
                         slide = slide.add_text(d.next().unwrap(), *scale, *color, *pos);

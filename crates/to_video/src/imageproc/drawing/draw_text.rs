@@ -1,5 +1,5 @@
 use super::{definitions::Clamp, rect::Rect, weighted_sum};
-use ab_glyph::{point, Font, GlyphId, OutlinedGlyph, PxScale, ScaleFont};
+use ab_glyph::{Font, GlyphId, OutlinedGlyph, PxScale, ScaleFont, point};
 use image::{GenericImage, Pixel};
 
 fn layout_glyphs(
@@ -106,7 +106,7 @@ where
                     let weighted_color = weighted_sum(pixel, color, 1.0 - gv, gv);
                     self.put_pixel(image_x, image_y, weighted_color);
                 }
-            })
+            });
         });
     }
 

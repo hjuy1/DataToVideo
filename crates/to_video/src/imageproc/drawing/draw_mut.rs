@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use super::{
-    draw_ellipse, draw_if_in_bounds, plot_wu_line, rect::Rect, BresenhamLineIter, Plotter, Point,
+    BresenhamLineIter, Plotter, Point, draw_ellipse, draw_if_in_bounds, plot_wu_line, rect::Rect,
 };
 use image::GenericImage;
 use std::{
@@ -309,13 +309,13 @@ pub trait DrawMut: GenericImage + Sized {
         if poly.is_empty() {
             return;
         }
-        if poly[0] == poly[poly.len() - 1] {
-            panic!(
-                "First point {:?} == last point {:?}",
-                poly[0],
-                poly[poly.len() - 1]
-            );
-        }
+        assert_ne!(
+            poly[0],
+            poly[poly.len() - 1],
+            "First point {:?} == last point {:?}",
+            poly[0],
+            poly[poly.len() - 1]
+        );
 
         let mut y_min = i32::MAX;
         let mut y_max = i32::MIN;
@@ -336,7 +336,7 @@ pub trait DrawMut: GenericImage + Sized {
         let edges: Vec<&[Point<i32>]> = closed.windows(2).collect();
         let mut intersections = Vec::new();
 
-        for y in y_min..y_max + 1 {
+        for y in y_min..=y_max {
             for edge in &edges {
                 let p0 = edge[0];
                 let p1 = edge[1];
@@ -370,7 +370,7 @@ pub trait DrawMut: GenericImage + Sized {
                     from = max(0, from);
                     to = max(0, to);
 
-                    for x in from..to + 1 {
+                    for x in from..=to {
                         self.put_pixel(x as u32, y as u32, color);
                     }
                 }
@@ -397,7 +397,7 @@ pub trait DrawMut: GenericImage + Sized {
     /// An implicit edge is added from the last to the first point in the slice.
     fn draw_polygon_mut(&mut self, poly: &[Point<i32>], color: Self::Pixel) {
         self.draw_polygon_with_mut(poly, color, |image, start, end, color| {
-            image.draw_line_segment_mut(start, end, color)
+            image.draw_line_segment_mut(start, end, color);
         });
     }
 
@@ -440,19 +440,18 @@ pub trait DrawMut: GenericImage + Sized {
         if poly.is_empty() {
             return;
         }
-        if poly.len() < 2 {
-            panic!(
-                "Polygon only has {} points, but at least two are needed.",
-                poly.len(),
-            );
-        }
-        if poly[0] == poly[poly.len() - 1] {
-            panic!(
-                "First point {:?} == last point {:?}",
-                poly[0],
-                poly[poly.len() - 1]
-            );
-        }
+        assert!(
+            (poly.len() >= 2),
+            "Polygon only has {} points, but at least two are needed.",
+            poly.len(),
+        );
+        assert_ne!(
+            poly[0],
+            poly[poly.len() - 1],
+            "First point {:?} == last point {:?}",
+            poly[0],
+            poly[poly.len() - 1]
+        );
         for window in poly.windows(2) {
             self.draw_line_segment_mut(
                 (window[0].x, window[0].y),
@@ -571,7 +570,7 @@ impl<I: GenericImage> DrawMut for I {
                 blend,
             };
             plot_wu_line(plotter, (x0, y0), (x1, y1), color);
-        };
+        }
     }
 
     fn draw_antialiased_polygon_mut<B>(&mut self, poly: &[Point<i32>], color: Self::Pixel, blend: B)
@@ -584,7 +583,7 @@ impl<I: GenericImage> DrawMut for I {
                 (end.0 as i32, end.1 as i32),
                 color,
                 &blend,
-            )
+            );
         });
     }
 }

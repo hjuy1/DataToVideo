@@ -1,18 +1,21 @@
 #![allow(non_snake_case)]
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de::Error as serdeError};
+use serde_json::Value;
 use std::{collections::HashMap, result::Result};
 
 #[derive(Deserialize, Serialize)]
 pub struct CharFile {
     pub Name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sex: Option<String>,
+    pub sex: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub combatExperience: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub birthPlace: Option<String>,
-    #[serde(deserialize_with = "date_of_birth")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "date_of_birth",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub dateOfBirth: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub race: Option<String>,
@@ -60,45 +63,29 @@ pub struct CarFile {
 #[derive(Deserialize, Serialize)]
 pub struct CharData {
     pub Name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub hp: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub atk: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub def: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub res: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reDeploy: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cost: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub block: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub atkSpeed: Option<String>,
+    pub hp: String,
+    pub atk: String,
+    pub def: String,
+    pub res: String,
+    pub reDeploy: String,
+    pub cost: String,
+    pub block: String,
+    pub atkSpeed: String,
     #[serde(alias = "trust")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub trust_hp_atk_def: Option<String>,
+    pub trust_hp_atk_def: String,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct CharInfo {
     pub Name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub en: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub profession: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subProfession: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub position: Option<String>,
+    pub en: String,
+    pub profession: String,
+    pub subProfession: String,
+    pub position: String,
     #[serde(deserialize_with = "rarity")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub rarity: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub logo: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tag: Option<String>,
+    pub rarity: u8,
+    pub logo: String,
+    pub tag: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub skin1name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -225,67 +212,56 @@ pub struct Char {
 #[derive(Deserialize, Serialize)]
 pub struct Memory {
     pub Name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub storySetName: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub storyIntro: Option<String>,
+    pub storySetName: String,
+    pub storyIntro: String,
     #[serde(deserialize_with = "story_txt")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub storyTxt: Option<String>,
+    pub storyTxt: String,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct Mod {
     pub Name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+    pub name: String,
     #[serde(alias = "charModuleN")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub 模组数: Option<String>,
+    pub 模组数: String,
     #[serde(alias = "type")]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub 类型: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    pub 类型: String,
+    #[serde(
+        deserialize_with = "del_lt_gt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub mission1: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        deserialize_with = "del_lt_gt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub mission2: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mission2Operation: Option<String>,
     #[serde(deserialize_with = "traitadd")]
     pub traitadd: bool,
-    #[serde(alias = "trait")]
-    #[serde(deserialize_with = "del_lt_gt")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(alias = "trait", deserialize_with = "del_lt_gt")]
     pub 等级1特性: Option<String>,
     #[serde(deserialize_with = "del_lt_gt")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub talent2: Option<String>,
     #[serde(deserialize_with = "del_lt_gt")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub talent3: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub hp: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub atk: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub def: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub res: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub time: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cost: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub block: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub atkspd: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub other: Option<String>,
+    pub hp: String,
+    pub atk: String,
+    pub def: String,
+    pub res: String,
+    pub time: String,
+    pub cost: String,
+    pub block: String,
+    pub atkspd: String,
+    pub other: String,
 }
 
 fn date_of_birth<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     Ok(
         Option::<String>::deserialize(deserializer)?.map(|s| match s.split_once('月') {
@@ -295,25 +271,58 @@ where
     )
 }
 
-fn rarity<'de, D>(deserializer: D) -> Result<Option<u8>, D::Error>
+fn rarity<'de, D>(deserializer: D) -> Result<u8, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
-    let v = Option::<String>::deserialize(deserializer)?;
-    Ok(v.and_then(|s| s.parse::<u8>().ok().and_then(|n| n.checked_add(1))))
+    let v = Value::deserialize(deserializer)?;
+    match v {
+        Value::Number(v) => match v.as_u64() {
+            Some(n) => u8::try_from(n)
+                .map_err(|_| serdeError::custom(format!("invalid rarity value: {n}"))),
+            None => Err(serdeError::custom(format!("invalid rarity value: {v}"))),
+        },
+        Value::String(s) => match s.parse::<u8>() {
+            Ok(n) => Ok(n + 1),
+            Err(_) => Err(serdeError::custom(format!("invalid rarity value: {s}"))),
+        },
+        _ => Err(serdeError::custom(format!("invalid rarity value: {v}"))),
+    }
 }
 
-fn story_txt<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+fn story_txt<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
-    let v = Option::<String>::deserialize(deserializer)?;
-    Ok(v.map(|s| format!("https://prts.wiki/w/{s}")))
+    let v = Value::deserialize(deserializer)?;
+    match v {
+        Value::String(s) => {
+            if s.starts_with("https") {
+                Ok(s)
+            } else {
+                Ok(format!("https://prts.wiki/w/{s}"))
+            }
+        }
+        _ => Err(serdeError::custom(format!("invalid story_txt value: {v}"))),
+    }
+}
+
+fn traitadd<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v = Value::deserialize(deserializer)?;
+    match v {
+        Value::Null => Ok(false),
+        Value::Bool(b) => Ok(b),
+        Value::String(_) => Ok(true),
+        _ => Err(serdeError::custom(format!("invalid traidadd value: {v}"))),
+    }
 }
 
 fn del_lt_gt<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
     let v = Option::<String>::deserialize(deserializer)?;
     Ok(v.map(|mut s| {
@@ -323,13 +332,6 @@ where
         }
         s
     }))
-}
-
-fn traitadd<'de, D>(deserializer: D) -> Result<bool, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    Ok(Option::<String>::deserialize(deserializer)?.is_some())
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

@@ -253,6 +253,7 @@ fn generate_endpoint_video(
 /// # Errors
 /// - 如果 `FFmpeg` 命令执行失败，则返回 `Err`。
 ///
+#[allow(clippy::too_many_arguments)]
 fn generate_mid_video(
     pic_name: &Path,
     video_name: &Path,

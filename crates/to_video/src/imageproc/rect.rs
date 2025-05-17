@@ -39,6 +39,7 @@ impl Rect {
     /// when specifying rects.
     ///
     /// See the [struct-level documentation](struct.Rect.html) for examples.
+    #[must_use]
     pub fn at(x: i32, y: i32) -> RectPosition {
         RectPosition { left: x, top: y }
     }

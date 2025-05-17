@@ -53,6 +53,7 @@ pub struct BresenhamLineIter {
 impl BresenhamLineIter {
     /// Creates a [`BresenhamLineIter`](struct.BresenhamLineIter.html) which will iterate over the integer coordinates
     /// between `start` and `end`.
+    #[must_use]
     pub fn new(start: (f32, f32), end: (f32, f32)) -> BresenhamLineIter {
         let (mut x0, mut y0) = (start.0, start.1);
         let (mut x1, mut y1) = (end.0, end.1);
@@ -174,7 +175,7 @@ fn plot_wu_line<I, T, B>(
     let gradient = dy as f32 / dx as f32;
     let mut fy = start.1 as f32;
 
-    for x in start.0..(end.0 + 1) {
+    for x in start.0..=end.0 {
         plotter.plot(x, fy as i32, color, 1.0 - fy.fract());
         plotter.plot(x, fy as i32 + 1, color, fy.fract());
         fy += gradient;

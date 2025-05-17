@@ -1,4 +1,4 @@
-use super::{definitions::Image, rect::Rect, DrawMut, Point};
+use super::{DrawMut, Point, definitions::Image, rect::Rect};
 use image::{GenericImage, ImageBuffer};
 
 #[allow(unused)]
@@ -216,7 +216,7 @@ pub trait Draw: GenericImage + Sized {
     /// An implicit edge is added from the last to the first point in the slice.
     fn draw_polygon(&self, poly: &[Point<i32>], color: Self::Pixel) -> Image<Self::Pixel> {
         self.draw_polygon_with(poly, color, |image, start, end, color| {
-            image.draw_line_segment_mut(start, end, color)
+            image.draw_line_segment_mut(start, end, color);
         })
     }
 
@@ -249,7 +249,7 @@ pub trait Draw: GenericImage + Sized {
                 (end.0 as i32, end.1 as i32),
                 color,
                 &blend,
-            )
+            );
         })
     }
 
