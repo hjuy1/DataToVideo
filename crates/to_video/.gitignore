@@ -1,0 +1,7 @@
+/target
+Cargo.lock
+/data
+*.code-workspace
+/parse_data
+*.py
+/work

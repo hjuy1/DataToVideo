@@ -1,0 +1,48 @@
+{
+  "slide_default": 1,
+  "operations": [
+    {
+      "Image": {
+        "left": 1,
+        "top": 0,
+        "height": 520
+      }
+    },
+    {
+      "Text": [
+        100.0,
+        [0, 0, 0],
+        {
+          "left": 1,
+          "top": 520,
+          "height": 214
+        }
+      ]
+    },
+    {
+      "Text": [
+        100.0,
+        [0, 0, 0],
+        {
+          "left": 1,
+          "top": 734,
+          "height": 336
+        }
+      ]
+    }
+  ],
+  "config": {
+    "screen": [1920, 1080],
+    "fps": 60,
+    "work_dir": null,
+    "back_color": "white",
+    "cover_sec": 4,
+    "ending_sec": 4,
+    "swip_pixels_per_sec": 160,
+    "width_slides": 480,
+    "save_path": null,
+    "step": 30,
+    "font": null
+  },
+  "data": "D:\\program\\DataToVideo\\parse_data\\data\\Birth.json"
+}

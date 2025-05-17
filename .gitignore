@@ -1,0 +1,9 @@
+/target
+Cargo.lock
+/data
+/resources
+/make_video
+*workspace
+tool_py
+/crates/get_data
+/crates/parse_data
