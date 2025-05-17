@@ -12,11 +12,8 @@ fn main() -> Result<()> {
 
     let (config, data) = init::parse()?;
 
-    let video = Video::builder(
-        data,
-        config.unwrap_or_else(|| VideoConfig::builder()).build()?,
-    )
-    .build()?;
+    let video =
+        Video::builder(data, config.unwrap_or_else(VideoConfig::builder).build()?).build()?;
     video.run()?;
     let cost = t.elapsed().as_millis();
     println!("cost {} s {} ms", cost / 1000, cost % 1000);

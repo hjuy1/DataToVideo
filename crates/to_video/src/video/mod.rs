@@ -5,7 +5,6 @@ use ab_glyph::FontArc;
 use image::{DynamicImage, GenericImage, GenericImageView};
 use std::{
     fs,
-    io::Write,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -62,10 +61,9 @@ impl Video {
         } = self.config;
 
         for (index, slides) in self.chunks.into_iter().enumerate() {
-            let font = font.clone();
             let slides_len = slides.len();
 
-            let target = combain_slides(slides, font, width_slides, screen)?;
+            let target = combain_slides(&slides, &font, width_slides, screen)?;
             if index == 0 {
                 let cover = target.crop_imm(0, 0, screen.0, screen.1);
                 let cover_pic_name = Path::new("cover.png");
@@ -74,7 +72,11 @@ impl Video {
 
                 let cover_video_name = cover_pic_name.with_extension("mp4");
 
-                print!("{}/{chunks_len}: {cover_video_name:?} start", index + 1);
+                print!(
+                    "{}/{chunks_len}: {} start",
+                    index + 1,
+                    cover_video_name.display()
+                );
                 generate_endpoint_video(
                     cover_pic_name,
                     &cover_video_name,
@@ -85,8 +87,9 @@ impl Video {
                     work_dir,
                 )?;
                 println!(
-                    "\r{}/{chunks_len}: {cover_video_name:?} successed",
-                    index + 1
+                    "\r{}/{chunks_len}: {} successed",
+                    index + 1,
+                    cover_video_name.display()
                 );
                 results.push(cover_video_name);
             }
@@ -99,7 +102,11 @@ impl Video {
             let mid_video_name = mid_pic_name.with_extension("mp4");
             let image_width = (slides_len as u32 - overlap) * width_slides;
 
-            print!("{}/{chunks_len}: {mid_video_name:?} start", index + 1);
+            print!(
+                "{}/{chunks_len}: {} start",
+                index + 1,
+                mid_video_name.display()
+            );
             generate_mid_video(
                 mid_pic_name,
                 &mid_video_name,
@@ -110,7 +117,11 @@ impl Video {
                 fps,
                 work_dir,
             )?;
-            println!("\r{}/{chunks_len}: {mid_video_name:?} successed", index + 1);
+            println!(
+                "\r{}/{chunks_len}: {} successed",
+                index + 1,
+                mid_video_name.display()
+            );
             results.push(mid_video_name);
 
             if index == chunks_len - 1 {
@@ -122,7 +133,11 @@ impl Video {
 
                 let ending_video_name = ending_pic_name.with_extension("mp4");
 
-                print!("{}/{chunks_len}: {ending_video_name:?} start", index + 1);
+                print!(
+                    "{}/{chunks_len}: {} start",
+                    index + 1,
+                    ending_video_name.display()
+                );
                 generate_endpoint_video(
                     ending_pic_name,
                     &ending_video_name,
@@ -133,8 +148,9 @@ impl Video {
                     work_dir,
                 )?;
                 println!(
-                    "\r{}/{chunks_len}: {ending_video_name:?} successed",
-                    index + 1
+                    "\r{}/{chunks_len}: {} successed",
+                    index + 1,
+                    ending_video_name.display()
                 );
                 results.push(ending_video_name);
             }
@@ -158,8 +174,8 @@ impl Video {
 /// - 如果图像处理过程中发生错误，则返回 `Err`。
 ///
 fn combain_slides(
-    slides: Vec<Slide>,
-    font: FontArc,
+    slides: &[Slide],
+    font: &FontArc,
     width_slides: u32,
     screen: (u32, u32),
 ) -> Result<DynamicImage> {
@@ -172,7 +188,7 @@ fn combain_slides(
 
     // 将每张图片绘制到目标图像中
     for (i, item) in slides.iter().enumerate() {
-        let img = item.render(width_slides, screen.1, &font)?;
+        let img = item.render(width_slides, screen.1, font)?;
         target.copy_from(&img, u32::try_from(i)? * width_slides, 0)?;
         target.copy_from(&img, u32::try_from(i)? * width_slides, 0)?;
     }
@@ -198,6 +214,7 @@ fn generate_endpoint_video(
     fps: u32,
     work_dir: &Path,
 ) -> Result<()> {
+    use std::io::Write;
     std::io::stdout().flush()?;
     ffmpeg(
         &[
@@ -246,6 +263,7 @@ fn generate_mid_video(
     fps: u32,
     work_dir: &Path,
 ) -> Result<()> {
+    use std::io::Write;
     std::io::stdout().flush()?;
     let run_seconds = image_width / swip_pixels_per_sec + 1;
 
@@ -286,13 +304,14 @@ fn generate_mid_video(
 /// - 如果文件写入或 `FFmpeg` 命令执行失败，则返回 `Err`。
 ///
 fn combain(mut results: Vec<PathBuf>, work_dir: &Path, save_path: &Path) -> Result<()> {
+    use std::fmt::Write;
     // 构建ffmpeg concat协议要求的输入文件列表字符串
     // 格式示例：file '/path/to/file1'\nfile '/path/to/file2'
     let result_str =
         results
             .iter()
             .fold(String::with_capacity(results.len() * 20), |mut init, s| {
-                init.push_str(&format!("file {}\n", s.to_string_lossy()));
+                let _ = writeln!(init, "file {}", s.to_string_lossy());
                 init
             });
 

@@ -74,9 +74,8 @@ impl VideoConfigBuilder {
             Some(work_dir) => {
                 if !work_dir.exists() {
                     return Err("work_dir is set but does not exist".into());
-                } else {
-                    work_dir
                 }
+                work_dir
             }
             None => {
                 let default_work_dir = std::env::current_dir()?.join("work");

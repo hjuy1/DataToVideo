@@ -166,7 +166,6 @@ fn plot_wu_line<I, T, B>(
     color: I::Pixel,
 ) where
     I: GenericImage,
-
     T: Fn(i32, i32) -> (i32, i32),
     B: Fn(I::Pixel, I::Pixel, f32) -> I::Pixel,
 {
@@ -185,7 +184,6 @@ fn plot_wu_line<I, T, B>(
 struct Plotter<'a, I, T, B>
 where
     I: GenericImage,
-
     T: Fn(i32, i32) -> (i32, i32),
     B: Fn(I::Pixel, I::Pixel, f32) -> I::Pixel,
 {
@@ -194,10 +192,9 @@ where
     blend: B,
 }
 
-impl<'a, I, T, B> Plotter<'a, I, T, B>
+impl<I, T, B> Plotter<'_, I, T, B>
 where
     I: GenericImage,
-
     T: Fn(i32, i32) -> (i32, i32),
     B: Fn(I::Pixel, I::Pixel, f32) -> I::Pixel,
 {

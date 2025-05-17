@@ -59,10 +59,6 @@ pub fn init() -> Result<()> {
         let example = serde_json::to_string_pretty(&info).unwrap();
         fs::write(info_example, example)?;
     }
-
-    if !example_dir.join("MiSans-Demibold.ttf").exists() {
-        return Err("default font file: ./example/MiSans-Demibold.ttf not found".into());
-    }
     Ok(())
 }
 
@@ -70,10 +66,17 @@ pub fn parse() -> Result<(Option<VideoConfigBuilder>, Vec<Slide>)> {
     let mut args = std::env::args().skip(1);
     let info: Info = if let Some(info) = args.next() {
         serde_json::from_slice(&fs::read(info)?)?
-    } else if std::env::current_dir()?.join("info.json").exists() {
-        serde_json::from_slice(&fs::read(std::env::current_dir()?.join("info.json"))?)?
     } else {
-        return Err("no info.json file".into());
+        let default_info = std::env::current_dir()?.join("info.json");
+        if default_info.exists() {
+            serde_json::from_slice(&fs::read(default_info)?)?
+        } else {
+            return Err(format!(
+                "Not set info_file arg and default_info_file: {} does not exist",
+                default_info.display()
+            )
+            .into());
+        }
     };
     let Info {
         slide_default,
@@ -90,7 +93,7 @@ pub fn parse() -> Result<(Option<VideoConfigBuilder>, Vec<Slide>)> {
             for o in operations.iter() {
                 match o {
                     Operation::Text(scale, color, pos) => {
-                        slide = slide.add_text(d.next().unwrap(), *scale, *color, *pos)
+                        slide = slide.add_text(d.next().unwrap(), *scale, *color, *pos);
                     }
                     Operation::Image(pos) => slide = slide.add_image(d.next().unwrap(), *pos),
                     Operation::Color(pos, color) => slide = slide.add_color(*pos, *color),
