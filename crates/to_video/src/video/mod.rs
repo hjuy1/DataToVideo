@@ -1,6 +1,6 @@
 pub mod config;
 
-use crate::{Result, slide::Slide};
+use crate::{Result, color::Color, slide::Slide};
 use ab_glyph::FontArc;
 use image::{DynamicImage, GenericImage, GenericImageView};
 use std::{
@@ -34,13 +34,8 @@ impl Video {
     /// 组合所有图像块并生成最终视频。
     ///
     /// # Parameters
-    /// - `save_name`: 最终视频文件名。
-    ///
-    /// # Errors
-    /// - 如果图像处理或保存过程中发生错误，则返回 `Err`。
-    /// - 如果 `FFmpeg` 命令执行失败，则返回 `Err`。
-    ///
-    pub fn run(self) -> Result<()> {
+    /// - `handle_progress`: 处理进度的回调函数，参数为处理文件名、已处理数量和总数量。
+    pub fn run<F: Fn(&Path, usize, usize)>(self, handle_progress: F) -> Result<()> {
         let chunks_len = self.chunks.len();
         let mut results = Vec::with_capacity(chunks_len + 2);
 
@@ -57,13 +52,14 @@ impl Video {
             width_slides,
             ref save_path,
             overlap,
+            split_line_color,
             ..
         } = self.config;
 
         for (index, slides) in self.chunks.into_iter().enumerate() {
             let slides_len = slides.len();
 
-            let target = combain_slides(&slides, &font, width_slides, screen)?;
+            let target = combain_slides(&slides, &font, width_slides, screen, split_line_color)?;
             if index == 0 {
                 let cover = target.crop_imm(0, 0, screen.0, screen.1);
                 let cover_pic_name = Path::new("cover.png");
@@ -72,11 +68,6 @@ impl Video {
 
                 let cover_video_name = cover_pic_name.with_extension("mp4");
 
-                print!(
-                    "{}/{chunks_len}: {} start",
-                    index + 1,
-                    cover_video_name.display()
-                );
                 generate_endpoint_video(
                     cover_pic_name,
                     &cover_video_name,
@@ -86,11 +77,8 @@ impl Video {
                     fps,
                     work_dir,
                 )?;
-                println!(
-                    "\r{}/{chunks_len}: {} successed",
-                    index + 1,
-                    cover_video_name.display()
-                );
+
+                handle_progress(&cover_video_name, index + 1, chunks_len);
                 results.push(cover_video_name);
             }
 
@@ -102,11 +90,6 @@ impl Video {
             let mid_video_name = mid_pic_name.with_extension("mp4");
             let image_width = (slides_len as u32 - overlap) * width_slides;
 
-            print!(
-                "{}/{chunks_len}: {} start",
-                index + 1,
-                mid_video_name.display()
-            );
             generate_mid_video(
                 mid_pic_name,
                 &mid_video_name,
@@ -117,11 +100,7 @@ impl Video {
                 fps,
                 work_dir,
             )?;
-            println!(
-                "\r{}/{chunks_len}: {} successed",
-                index + 1,
-                mid_video_name.display()
-            );
+            handle_progress(&mid_video_name, index + 2, chunks_len);
             results.push(mid_video_name);
 
             if index == chunks_len - 1 {
@@ -133,11 +112,6 @@ impl Video {
 
                 let ending_video_name = ending_pic_name.with_extension("mp4");
 
-                print!(
-                    "{}/{chunks_len}: {} start",
-                    index + 1,
-                    ending_video_name.display()
-                );
                 generate_endpoint_video(
                     ending_pic_name,
                     &ending_video_name,
@@ -147,11 +121,7 @@ impl Video {
                     fps,
                     work_dir,
                 )?;
-                println!(
-                    "\r{}/{chunks_len}: {} successed",
-                    index + 1,
-                    ending_video_name.display()
-                );
+                handle_progress(&ending_video_name, index + 3, chunks_len);
                 results.push(ending_video_name);
             }
         }
@@ -178,6 +148,7 @@ fn combain_slides(
     font: &FontArc,
     width_slides: u32,
     screen: (u32, u32),
+    split_line_color: Option<Color>,
 ) -> Result<DynamicImage> {
     if slides.is_empty() {
         return Err("Empty slides".into());
@@ -188,7 +159,7 @@ fn combain_slides(
 
     // 将每张图片绘制到目标图像中
     for (i, item) in slides.iter().enumerate() {
-        let img = item.render(width_slides, screen.1, font)?;
+        let img = item.render(width_slides, screen.1, font, split_line_color)?;
         target.copy_from(&img, u32::try_from(i)? * width_slides, 0)?;
         target.copy_from(&img, u32::try_from(i)? * width_slides, 0)?;
     }

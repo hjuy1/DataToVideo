@@ -1,20 +1,31 @@
 use crate::{color::Color, slide::Position};
 
-pub const POSITION_COMBIMATION_1: (Position, Position, Position) = (
+pub const POSITION_3_1: (Position, Position, Position) = (
     Position::new(1, 0, 520),
     Position::new(1, 520, 214),
     Position::new(1, 734, 346),
 );
-pub const POSITION_COMBIMATION_2: (Position, Position, Position, Position) = (
-    Position::new(1, 0, 520),
-    Position::new(1, 520, 214),
-    Position::new(1, 734, 346),
-    Position::new(1, 734, 346),
+pub const POSITION_4_2: (Position, Position, Position, Position) = (
+    Position::new(1, 0, 500),
+    Position::new(1, 500, 180),
+    Position::new(1, 680, 180),
+    Position::new(1, 860, 220),
 );
-pub const COLOR_COMBIMATION_1: (Color, Color) = (Color([244, 163, 50]), Color([255, 227, 196]));
-pub const COLOR_COMBIMATION_2: (Color, Color) = (Color([23, 150, 235]), Color([44, 85, 153]));
-pub const COLOR_COMBIMATION_3: (Color, Color) = (Color([200, 250, 250]), Color([240, 240, 220]));
-pub const COLOR_COMBIMATION_4: (Color, Color) = (Color([160, 100, 255]), Color([235, 235, 235]));
+pub const COLOR_2_1: (Color, Color) = (Color([245, 160, 50]), Color([255, 225, 200]));
+pub const COLOR_2_2: (Color, Color) = (Color([200, 250, 250]), Color([240, 240, 220]));
+pub const COLOR_2_3: (Color, Color) = (Color([160, 100, 255]), Color([235, 235, 235]));
+pub const COLOR_2_4: (Color, Color) = (Color([25, 150, 235]), Color([45, 85, 150]));
+pub const COLOR_3_1: (Color, Color, Color) = (
+    Color([245, 165, 50]),
+    Color([255, 225, 150]),
+    Color([200, 250, 250]),
+);
+pub const COLOR_4_1: (Color, Color, Color, Color) = (
+    Color([245, 165, 50]),
+    Color([255, 225, 150]),
+    Color([200, 250, 250]),
+    Color([240, 240, 220]),
+);
 
 pub const BLACK: Color = Color([0, 0, 0]);
 pub const WHITE: Color = Color([255, 255, 255]);

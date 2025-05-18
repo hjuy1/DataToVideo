@@ -1,4 +1,4 @@
-use crate::Result;
+use crate::{Result, color::Color};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -15,6 +15,7 @@ pub struct VideoConfig {
     pub(super) step: u32,
     pub(super) overlap: u32,
     pub(super) font: PathBuf,
+    pub(super) split_line_color: Option<Color>,
 }
 
 impl VideoConfig {
@@ -36,6 +37,7 @@ pub struct VideoConfigBuilder {
     pub save_path: Option<PathBuf>,
     pub step: u32,
     pub font: Option<PathBuf>,
+    pub split_line_color: Option<Color>,
 }
 
 impl VideoConfigBuilder {
@@ -52,6 +54,7 @@ impl VideoConfigBuilder {
             save_path: None,
             step: 20,
             font: None,
+            split_line_color: Some(Color([255, 255, 255])),
         }
     }
 
@@ -112,6 +115,7 @@ impl VideoConfigBuilder {
             step: self.step,
             overlap,
             font,
+            split_line_color: self.split_line_color,
         })
     }
 }
@@ -169,6 +173,11 @@ impl VideoConfigBuilder {
 
     pub fn font(mut self, font: PathBuf) -> Self {
         self.font = Some(font);
+        self
+    }
+
+    pub fn split_line_color(mut self, split_line_color: Option<Color>) -> Self {
+        self.split_line_color = split_line_color;
         self
     }
 }
