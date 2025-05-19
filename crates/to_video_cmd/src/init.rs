@@ -2,9 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 use to_video::{
     BLACK, COLOR_2_1, POSITION_3_1, Result,
-    color::Color,
-    slide::{Position, Slide},
-    video::{VideoConfig, VideoConfigBuilder},
+    slide::{Operation, OperationType},
+    video::{Video, VideoBuilder, VideoConfig, VideoConfigBuilder},
 };
 
 #[derive(Deserialize, Serialize)]
@@ -12,13 +11,6 @@ pub struct Info {
     pub operations: Vec<Operation>,
     pub config: VideoConfigBuilder,
     pub data: PathBuf,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub enum Operation {
-    Image(Position),
-    Text(f32, Color, Position),
-    Color(Color, Position),
 }
 
 pub fn example() -> Result<()> {
@@ -45,11 +37,26 @@ pub fn example() -> Result<()> {
     if !info_example.exists() {
         let info = Info {
             operations: vec![
-                Operation::Image(POSITION_3_1.0),
-                Operation::Text(100.0, BLACK, POSITION_3_1.1),
-                Operation::Text(100.0, BLACK, POSITION_3_1.2),
-                Operation::Color(COLOR_2_1.0, POSITION_3_1.1),
-                Operation::Color(COLOR_2_1.1, POSITION_3_1.2),
+                Operation {
+                    op: OperationType::Image(POSITION_3_1.0),
+                    z_index: 2,
+                },
+                Operation {
+                    op: OperationType::Text(100.0, BLACK, POSITION_3_1.1),
+                    z_index: 2,
+                },
+                Operation {
+                    op: OperationType::Text(100.0, BLACK, POSITION_3_1.2),
+                    z_index: 2,
+                },
+                Operation {
+                    op: OperationType::Color(COLOR_2_1.0, POSITION_3_1.1),
+                    z_index: 2,
+                },
+                Operation {
+                    op: OperationType::Color(COLOR_2_1.1, POSITION_3_1.2),
+                    z_index: 2,
+                },
             ],
             config: VideoConfig::builder(),
             data: data_example,
@@ -60,44 +67,33 @@ pub fn example() -> Result<()> {
     Ok(())
 }
 
-pub fn parse() -> Result<(VideoConfigBuilder, Vec<Slide>)> {
+pub fn parse() -> Result<VideoBuilder> {
     let mut args = std::env::args().skip(1);
     let info: Info = if let Some(info) = args.next() {
-        serde_json::from_slice(&fs::read(info)?)?
+        if info.as_str().trim() == "example" {
+            example()?;
+            std::process::exit(0);
+        } else {
+            serde_json::from_slice(&fs::read(info)?)?
+        }
     } else {
         let default_info = std::env::current_dir()?.join("info.json");
         if default_info.exists() {
             serde_json::from_slice(&fs::read(default_info)?)?
         } else {
             return Err(format!(
-                "Not set info_file arg and default_info_file: {} does not exist",
+                "Not info_file arg and default_info_file: {} does not exist",
                 default_info.display()
             )
             .into());
         }
     };
     let Info {
-        operations,
+        mut operations,
         config,
         data,
     } = info;
     let data: Vec<Vec<String>> = serde_json::from_slice(&fs::read(data)?)?;
-    let slides = data
-        .iter()
-        .map(|d| {
-            let mut slide = Slide::new();
-            let mut d = d.iter();
-            for o in &operations {
-                match o {
-                    Operation::Text(scale, color, pos) => {
-                        slide = slide.add_text(d.next().unwrap(), *scale, *color, *pos);
-                    }
-                    Operation::Image(pos) => slide = slide.add_image(d.next().unwrap(), *pos),
-                    Operation::Color(pos, color) => slide = slide.add_color(*pos, *color),
-                }
-            }
-            slide
-        })
-        .collect::<Vec<_>>();
-    Ok((config, slides))
+    let video_builder = Video::builder(&mut operations, data, config.build()?)?;
+    Ok(video_builder)
 }

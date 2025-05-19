@@ -1,6 +1,10 @@
 pub mod config;
 
-use crate::{Result, color::Color, slide::Slide};
+use crate::{
+    Result,
+    color::Color,
+    slide::{Operation, Slide},
+};
 use ab_glyph::FontArc;
 use image::{DynamicImage, GenericImage, GenericImageView};
 use std::{
@@ -17,8 +21,19 @@ pub struct Video {
 }
 
 impl Video {
-    pub fn builder(slides: Vec<Slide>, config: VideoConfig) -> VideoBuilder {
-        VideoBuilder { slides, config }
+    pub fn builder(
+        operations: &mut [Operation],
+        datas: Vec<Vec<String>>,
+        config: VideoConfig,
+    ) -> Result<VideoBuilder> {
+        operations.sort_by_key(|op| op.z_index);
+        Ok(VideoBuilder {
+            slides: datas
+                .into_iter()
+                .map(|data| Slide::generation(operations, data))
+                .collect::<Result<Vec<Slide>>>()?,
+            config: config,
+        })
     }
 
     pub fn chunks(&self) -> &Vec<Vec<Slide>> {
@@ -35,7 +50,10 @@ impl Video {
     ///
     /// # Parameters
     /// - `handle_progress`: 处理进度的回调函数，参数为处理文件名、已处理数量和总数量。
-    pub fn run<F: Fn(&Path, usize, usize)>(self, handle_progress: F) -> Result<()> {
+    pub fn run<F>(self, handle_progress: F) -> Result<()>
+    where
+        F: Fn(&Path, usize, usize) -> std::result::Result<(), String>,
+    {
         let chunks_len = self.chunks.len();
         let mut results = Vec::with_capacity(chunks_len + 2);
 
@@ -78,7 +96,7 @@ impl Video {
                     work_dir,
                 )?;
 
-                handle_progress(&cover_video_name, index + 1, chunks_len);
+                handle_progress(&cover_video_name, index + 1, chunks_len + 2)?;
                 results.push(cover_video_name);
             }
 
@@ -100,7 +118,7 @@ impl Video {
                 fps,
                 work_dir,
             )?;
-            handle_progress(&mid_video_name, index + 2, chunks_len);
+            handle_progress(&mid_video_name, index + 2, chunks_len + 2)?;
             results.push(mid_video_name);
 
             if index == chunks_len - 1 {
@@ -121,7 +139,7 @@ impl Video {
                     fps,
                     work_dir,
                 )?;
-                handle_progress(&ending_video_name, index + 3, chunks_len);
+                handle_progress(&ending_video_name, index + 3, chunks_len + 2)?;
                 results.push(ending_video_name);
             }
         }
@@ -346,8 +364,8 @@ fn ffmpeg(args: &[&str], work_dir: &Path) -> Result<()> {
         .args(args)
         .output()?;
     if !command.status.success() {
-        println!("{}", String::from_utf8(command.stderr)?);
-        return Err("FFmpeg command failed".into());
+        let put = format!("{}", String::from_utf8(command.stderr)?);
+        return Err(format!("FFmpeg command failed: {}", put).into());
     }
     Ok(())
 }

@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 
 #[derive(Clone, Deserialize)]
-pub(super) enum ContentType {
+pub enum ContentType {
     Image(PathBuf),
     Text {
         content: String,
@@ -24,7 +24,7 @@ pub(super) enum ContentType {
 }
 
 impl ContentType {
-    pub(super) fn render(&self, img: &mut DynamicImage, rect: Rect, font: &FontArc) -> Result<()> {
+    pub fn render(&self, img: &mut DynamicImage, rect: Rect, font: &FontArc) -> Result<()> {
         match self {
             ContentType::Image(path) => {
                 let img_element = image::open(path)?.thumbnail(rect.width(), rect.height());
@@ -67,7 +67,7 @@ impl Position {
 }
 
 #[derive(Clone, Deserialize)]
-pub(super) struct Element {
-    pub(super) content: ContentType,
-    pub(super) position: Position,
+pub struct Element {
+    pub content: ContentType,
+    pub position: Position,
 }

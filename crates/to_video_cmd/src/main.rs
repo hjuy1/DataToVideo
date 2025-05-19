@@ -1,17 +1,18 @@
 mod init;
 
 use std::{path::Path, time::Instant};
-use to_video::{Result, video::Video};
+use to_video::Result;
 
 fn main() -> Result<()> {
     let t = Instant::now();
 
-    let (config, data) = init::parse()?;
+    let video_builder = init::parse()?;
 
-    let video = Video::builder(data, config.build()?).build()?;
+    let video = video_builder.build()?;
 
     let handle_progress = move |file: &Path, generate_len: usize, total: usize| {
         println!("{} / {} : {}  success", generate_len, total, file.display());
+        Ok(())
     };
 
     video.run(handle_progress)?;

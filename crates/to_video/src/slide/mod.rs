@@ -1,46 +1,61 @@
 mod element;
-mod position;
 
 use crate::{Result, color::Color, imageproc::drawing::DrawMut};
 use ab_glyph::FontArc;
-pub use element::Position;
-use element::{ContentType, Element};
+pub use element::{ContentType, Element, Position};
 use image::DynamicImage;
-use serde::Deserialize;
-use std::path::Path;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+
+#[derive(Deserialize, Serialize)]
+pub enum OperationType {
+    Image(Position),
+    Text(f32, Color, Position),
+    Color(Color, Position),
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Operation {
+    pub op: OperationType,
+    pub z_index: u8,
+}
 
 #[derive(Clone, Deserialize)]
-pub struct Slide {
-    elements: Vec<Element>,
-    image_num: usize,
-    text_num: usize,
-    color_num: usize,
-}
+pub struct Slide(Vec<Element>);
 
 impl Slide {
     pub fn new() -> Self {
-        Self {
-            elements: Vec::with_capacity(8),
-            image_num: 0,
-            text_num: 0,
-            color_num: 0,
-        }
+        Self(Vec::with_capacity(8))
     }
-    /// 获取元素数量, 返回(图片数量, 文字数量, 色块数量)
-    pub fn element_size(&self) -> (usize, usize, usize) {
-        (self.image_num, self.text_num, self.color_num)
+    pub fn generation(operations: &[Operation], datas: Vec<String>) -> Result<Self> {
+        let mut data = datas.into_iter();
+        let elements = operations
+            .iter()
+            .map(|op| match op.op {
+                OperationType::Image(position) => Ok(Element {
+                    content: ContentType::Image(PathBuf::from(
+                        data.next().ok_or(format!("图片数据不足"))?,
+                    )),
+                    position,
+                }),
+                OperationType::Text(max_scale, color, position) => Ok(Element {
+                    content: ContentType::Text {
+                        content: data.next().take().ok_or(format!("文本数据不足"))?,
+                        max_scale,
+                        color,
+                    },
+                    position,
+                }),
+                OperationType::Color(color, position) => Ok(Element {
+                    content: ContentType::Color(color),
+                    position,
+                }),
+            })
+            .collect::<Result<Vec<Element>>>()?;
+        Ok(Self(elements))
     }
-    pub fn image_num(&self) -> usize {
-        self.image_num
-    }
-    pub fn text_num(&self) -> usize {
-        self.text_num
-    }
-    pub fn color_num(&self) -> usize {
-        self.color_num
-    }
-    pub fn add_text(mut self, str: &str, max_scale: f32, color: Color, position: Position) -> Self {
-        self.elements.push(Element {
+    pub fn add_text(&mut self, str: &str, max_scale: f32, color: Color, position: Position) {
+        self.0.push(Element {
             content: ContentType::Text {
                 content: str.to_string(),
                 max_scale,
@@ -48,24 +63,18 @@ impl Slide {
             },
             position,
         });
-        self.text_num += 1;
-        self
     }
-    pub fn add_image(mut self, image_path: impl AsRef<Path>, position: Position) -> Self {
-        self.elements.push(Element {
+    pub fn add_image(&mut self, image_path: impl AsRef<Path>, position: Position) {
+        self.0.push(Element {
             content: ContentType::Image(image_path.as_ref().to_path_buf()),
             position,
         });
-        self.image_num += 1;
-        self
     }
-    pub fn add_color(mut self, color: Color, position: Position) -> Self {
-        self.elements.push(Element {
+    pub fn add_color(&mut self, color: Color, position: Position) {
+        self.0.push(Element {
             content: ContentType::Color(color),
             position,
         });
-        self.color_num += 1;
-        self
     }
 }
 
@@ -78,7 +87,7 @@ impl Slide {
         split_line_color: Option<Color>,
     ) -> Result<DynamicImage> {
         let mut img = DynamicImage::new_rgba8(width, height);
-        for element in &self.elements {
+        for element in &self.0 {
             let rect = element.position.to_rect(width);
             element.content.render(&mut img, rect, font)?;
         }

@@ -22,6 +22,10 @@ impl VideoConfig {
     pub fn builder() -> VideoConfigBuilder {
         VideoConfigBuilder::new()
     }
+
+    pub fn save_path(&self) -> &PathBuf {
+        &self.save_path
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -108,7 +112,7 @@ impl VideoConfigBuilder {
             swip_pixels_per_sec: self.swip_pixels_per_sec,
             width_slides: self.width_slides,
             save_path: self.save_path.unwrap_or_else(|| {
-                let default_path = work_dir.join("output");
+                let default_path = work_dir.join("output.mp4");
                 println!("Using default save_path: {}", default_path.display());
                 default_path
             }),
