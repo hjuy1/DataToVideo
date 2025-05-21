@@ -20,7 +20,7 @@ pub struct Operation {
     pub z_index: u8,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Slide(Vec<Element>);
 
 impl Slide {

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::path::PathBuf;
 
-#[derive(Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum ContentType {
     Image(PathBuf),
     Text {
@@ -66,7 +66,7 @@ impl Position {
     }
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Element {
     pub content: ContentType,
     pub position: Position,

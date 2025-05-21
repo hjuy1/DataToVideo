@@ -18,5 +18,6 @@ fn main() -> Result<()> {
     video.run(handle_progress)?;
     let cost = t.elapsed().as_millis();
     println!("cost {} s {} ms", cost / 1000, cost % 1000);
+    std::io::stdin().read_line(&mut String::new())?;
     Ok(())
 }
