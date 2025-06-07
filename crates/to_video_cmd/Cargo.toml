@@ -9,3 +9,4 @@ authors.workspace = true
 to_video.workspace = true
 serde_json.workspace = true
 serde.workspace = true
+rfd.workspace = true

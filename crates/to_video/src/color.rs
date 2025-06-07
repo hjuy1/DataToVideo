@@ -3,7 +3,7 @@ use image::Rgba;
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Color(pub [u8; 3]);
 
 impl Deref for Color {

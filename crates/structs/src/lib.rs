@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize, de::Error as serdeError};
 use serde_json::Value;
 use std::{collections::HashMap, result::Result};
@@ -357,7 +358,6 @@ pub struct Author {
 #[derive(Deserialize, Serialize)]
 pub struct Preview {
     pub date: String,
-    pub way: String,
     pub operator: String,
     pub preview: Vec<String>,
 }
@@ -378,32 +378,34 @@ pub struct RealName {
 #[derive(Deserialize, Serialize)]
 pub struct Skin {
     pub name: String,
+    pub is_animated: bool,
+    pub has_intro_animation: bool,
+    pub has_exclusive_voice: bool,
+    pub has_multiple_actions: bool,
     pub owner: String,
     pub essay: String,
     pub painter: String,
     pub access: String,
     pub brand_group: String,
-    pub date_launch: (u16, u8, u8),
+    pub date_launch: Option<(u16, u8, u8)>,
     pub description: String,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct Brand {
     pub name: String,
-    pub pic_url: String,
     pub intro: String,
     pub skin: Vec<Skin>,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct VoiceItem {
-    pub voice_title: String,
     pub voice_filename: String,
-    pub item: HashMap<String, String>,
+    pub item: IndexMap<String, String>,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct Voice {
-    pub voice_base: HashMap<String, String>,
-    pub voice_item: Vec<VoiceItem>,
+    pub voice_base: IndexMap<String, String>,
+    pub voice_item: IndexMap<String, VoiceItem>,
 }

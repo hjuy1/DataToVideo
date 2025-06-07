@@ -1,12 +1,11 @@
-mod init;
-
 use std::{path::Path, time::Instant};
 use to_video::Result;
+use to_video_cmd::parse;
 
 fn main() -> Result<()> {
     let t = Instant::now();
 
-    let video_builder = init::parse()?;
+    let video_builder = parse()?;
 
     let video = video_builder.build()?;
 

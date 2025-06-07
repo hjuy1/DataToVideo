@@ -5,11 +5,17 @@ pub const POSITION_3_1: (Position, Position, Position) = (
     Position::new(1, 520, 214),
     Position::new(1, 734, 346),
 );
-pub const POSITION_4_2: (Position, Position, Position, Position) = (
+pub const POSITION_4_1: (Position, Position, Position, Position) = (
     Position::new(1, 0, 500),
     Position::new(1, 500, 180),
     Position::new(1, 680, 180),
     Position::new(1, 860, 220),
+);
+pub const POSITION_4_2: (Position, Position, Position, Position) = (
+    Position::new(1, 0, 500),
+    Position::new(1, 500, 200),
+    Position::new(1, 700, 200),
+    Position::new(1, 900, 140),
 );
 pub const COLOR_2_1: (Color, Color) = (Color([245, 160, 50]), Color([255, 225, 200]));
 pub const COLOR_2_2: (Color, Color) = (Color([200, 250, 250]), Color([240, 240, 220]));

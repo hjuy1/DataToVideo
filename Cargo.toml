@@ -13,7 +13,7 @@ authors = ["<hjuy1> <<EMAIL>>"]
 structs = { path = "crates/structs" }
 to_video = { path = "crates/to_video" }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1" }
+serde_json = { version = "1", features = ["indexmap"] }
 scraper = { version = "0.23", default-features = false }
 md-5 = { version = "0.10", default-features = false }
 reqwest = { version = "0.12", default-features = false, features = [
@@ -25,8 +25,11 @@ reqwest = { version = "0.12", default-features = false, features = [
 tokio = { version = "1.45", default-features = false, features = [
   "fs",
   "macros",
+  "rt-multi-thread",
 ] }
 ab_glyph = { version = "0.2" }
 image = { version = "0.25", default-features = false, features = ["png"] }
 # eframe = { version = "0.31", default-features = false, features = ["glow"] }
 # egui_extras = { version = "0.31", features = ["all_loaders"] }
+rfd = "0.15.3"
+indexmap = { version = "2.9", features = ["serde"] }
