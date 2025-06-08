@@ -76,7 +76,7 @@ pub fn example() -> Result<()> {
                     z_index: 6,
                 },
             ],
-            config: VideoConfig::builder(),
+            config: VideoConfig::builder().fps(30).step(15),
             data: data_example,
         };
         let example = serde_json::to_string_pretty(&info).unwrap();

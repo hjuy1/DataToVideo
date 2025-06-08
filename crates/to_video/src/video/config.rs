@@ -2,12 +2,22 @@ use crate::{Result, color::Color};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub enum MotionType {
+    Linear,    // 匀速运动
+    EaseIn,    // 缓入（变速）
+    EaseOut,   // 缓出（变速）
+    EaseInOut, // 缓入缓出（变速）
+}
+
 pub struct VideoConfig {
+    pub(super) encoder: String,
     pub(super) screen: (u32, u32),
     pub(super) fps: u32,
     pub(super) work_dir: PathBuf,
     pub(super) back_color: String,
-    pub(super) cover_sec: u32,
+    pub(super) cover_sec: f32,
+    pub(super) motion_type: MotionType,
     pub(super) ending_sec: u32,
     pub(super) swip_pixels_per_sec: u32,
     pub(super) width_slides: u32,
@@ -16,6 +26,7 @@ pub struct VideoConfig {
     pub(super) overlap: u32,
     pub(super) font: PathBuf,
     pub(super) split_line_color: Option<Color>,
+    pub(super) clean_temp: bool,
 }
 
 impl VideoConfig {
@@ -30,11 +41,13 @@ impl VideoConfig {
 
 #[derive(Serialize, Deserialize)]
 pub struct VideoConfigBuilder {
+    pub encoder: String,
     pub screen: (u32, u32),
     pub fps: u32,
     pub work_dir: Option<PathBuf>,
     pub back_color: String,
-    pub cover_sec: u32,
+    pub cover_sec: f32,
+    pub motion_type: MotionType,
     pub ending_sec: u32,
     pub swip_pixels_per_sec: u32,
     pub width_slides: u32,
@@ -42,16 +55,19 @@ pub struct VideoConfigBuilder {
     pub step: u32,
     pub font: Option<PathBuf>,
     pub split_line_color: Option<Color>,
+    pub clean_temp: bool,
 }
 
 impl VideoConfigBuilder {
     pub fn new() -> Self {
         Self {
+            encoder: "libx264".into(),
             screen: (1920, 1080),
             fps: 60,
             work_dir: None,
             back_color: "white".to_string(),
-            cover_sec: 4,
+            cover_sec: 10.0,
+            motion_type: MotionType::EaseInOut,
             ending_sec: 4,
             swip_pixels_per_sec: 160,
             width_slides: 480,
@@ -59,6 +75,7 @@ impl VideoConfigBuilder {
             step: 20,
             font: None,
             split_line_color: Some(Color([255, 255, 255])),
+            clean_temp: true,
         }
     }
 
@@ -103,11 +120,13 @@ impl VideoConfigBuilder {
         };
 
         Ok(VideoConfig {
+            encoder: self.encoder,
             screen: self.screen,
             fps: self.fps,
             work_dir: work_dir.clone(),
             back_color: self.back_color,
             cover_sec: self.cover_sec,
+            motion_type: self.motion_type,
             ending_sec: self.ending_sec,
             swip_pixels_per_sec: self.swip_pixels_per_sec,
             width_slides: self.width_slides,
@@ -120,11 +139,17 @@ impl VideoConfigBuilder {
             overlap,
             font,
             split_line_color: self.split_line_color,
+            clean_temp: self.clean_temp,
         })
     }
 }
 
 impl VideoConfigBuilder {
+    pub fn encoder(mut self, encoder: &str) -> Self {
+        self.encoder = encoder.to_string();
+        self
+    }
+
     pub fn screen(mut self, screen: (u32, u32)) -> Self {
         self.screen = screen;
         self
@@ -145,8 +170,13 @@ impl VideoConfigBuilder {
         self
     }
 
-    pub fn cover_sec(mut self, cover_sec: u32) -> Self {
+    pub fn cover_sec(mut self, cover_sec: f32) -> Self {
         self.cover_sec = cover_sec;
+        self
+    }
+
+    pub fn motion_type(mut self, motion_type: MotionType) -> Self {
+        self.motion_type = motion_type;
         self
     }
 
@@ -182,6 +212,11 @@ impl VideoConfigBuilder {
 
     pub fn split_line_color(mut self, split_line_color: Option<Color>) -> Self {
         self.split_line_color = split_line_color;
+        self
+    }
+
+    pub fn clean_temp(mut self, clean_temp: bool) -> Self {
+        self.clean_temp = clean_temp;
         self
     }
 }

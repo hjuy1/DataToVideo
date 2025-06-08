@@ -1,7 +1,9 @@
+use super::config::MotionType;
 use crate::{Result, color::Color, slide::Slide};
 use ab_glyph::FontArc;
 use image::{DynamicImage, GenericImage};
 use std::{
+    ffi::OsStr,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -40,50 +42,84 @@ pub fn combain_slides(
     Ok(target)
 }
 
-/// 生成视频封面或结尾视频。
-///
-/// # Parameters
-/// - `pic_name`: 素材图片名称。
-/// - `video_name`: 生成视频名称。
-/// - `video_time`: 视频时长（秒）。
-///
-/// # Errors
-/// - 如果 `FFmpeg` 命令执行失败，则返回 `Err`。
-///
-pub fn generate_endpoint_video(
-    pic_name: &Path,
-    video_name: &Path,
-    video_time: u32,
+impl MotionType {
+    pub fn get_motion_range(&self, ranges: &str) -> String {
+        match self {
+            MotionType::Linear => ranges.to_string(),
+            MotionType::EaseIn => format!("sin({ranges}*3.14/2-3.14/2)+1"),
+            MotionType::EaseOut => format!("sin({ranges}*3.14/2)"),
+            MotionType::EaseInOut => format!("(sin({ranges}*3.14-3.14/2)+1)/2"),
+        }
+    }
+}
+
+pub fn generate_cover_video(
+    encoder: &str,
+    input_images: Vec<String>,
+    cover_sec: f32,
     back_color: &str,
     screen: (u32, u32),
+    width_slides: u32,
     fps: u32,
+    motion_type: MotionType,
     work_dir: &Path,
+    video_name: &Path,
 ) -> Result<()> {
-    ffmpeg(
-        &[
-            "-loglevel",
-            "warning",
-            "-r",
-            "1",
-            "-loop",
-            "1",
-            "-i",
-            &format!("{}", pic_name.display()),
-            "-filter_complex",
-            &format!(
-                "color={}:s={}x{}:r={}[bg];[bg][0]overlay=shortest=1",
-                back_color, screen.0, screen.1, fps
-            ),
-            "-preset",
-            "fast",
-            "-t",
-            &video_time.to_string(),
-            "-y",
-            &format!("{}", video_name.display()),
-        ],
-        work_dir,
-    )?;
-    Ok(())
+    let num_images = input_images.len();
+    let fade_duration = cover_sec / num_images as f32;
+
+    // 添加输入图片
+    let mut inputs = String::new();
+    let mut filters = String::new();
+
+    // 创建基础画布
+    filters.push_str(&format!(
+        "color={back_color}:s={}x{}:r={fps}[base];",
+        screen.0, screen.1
+    ));
+
+    // 处理每张图片
+    for (i, img) in input_images.iter().enumerate() {
+        inputs.push_str(&format!("-i {} ", img));
+        let start_time = i as f32 * fade_duration;
+
+        // 图片输入和格式转换
+        filters.push_str(&format!(
+            "[{}:v]format=yuva420p,setpts=PTS-STARTPTS+{}/TB[v{}];",
+            i, start_time, i
+        ));
+
+        // 计算水平位置（x坐标）
+        let x_pos = i as u32 * width_slides;
+
+        // 计算垂直运动（y坐标）
+        let ranges = motion_type.get_motion_range(&format!(
+            "clip(t-{},0,{fade_duration})/{fade_duration}",
+            i as f32 * fade_duration,
+        ));
+        let y_expr = format!("{}-({ranges})*{}", screen.1, screen.1);
+
+        // 叠加到画布
+        let input = if i == 0 {
+            "base".to_string()
+        } else {
+            format!("tmp{}", i - 1)
+        };
+        filters.push_str(&format!(
+            "[{}][v{}]overlay=x={}:y='{}'[tmp{}];",
+            input, i, x_pos, y_expr, i
+        ));
+    }
+
+    let ffmpeg_args = format!(
+        "{inputs} -filter_complex {} -map [tmp{}] \
+        -c:v {encoder} -crf 18 -preset fast -movflags +faststart -t {cover_sec} {}",
+        filters.trim_end_matches(';'),
+        num_images - 1,
+        video_name.display()
+    );
+
+    ffmpeg(work_dir, ffmpeg_args.split_ascii_whitespace())
 }
 
 /// 生成中间部分的视频。
@@ -98,152 +134,29 @@ pub fn generate_endpoint_video(
 ///
 #[allow(clippy::too_many_arguments)]
 pub fn generate_mid_video(
+    encoder: &str,
     pic_name: &Path,
     video_name: &Path,
-    image_width: u32,
     screen: (u32, u32),
     swip_pixels_per_sec: u32,
     back_color: &str,
     fps: u32,
+    move_sec: u32,
+    static_sec: u32,
     work_dir: &Path,
 ) -> Result<()> {
-    let run_sec = (image_width - screen.0) / swip_pixels_per_sec + 1;
-    ffmpeg(
-        &[
-            "-loglevel",
-            "warning",
-            "-r",
-            "1",
-            "-loop",
-            "1",
-            "-t",
-            &run_sec.to_string(),
-            "-i",
-            &format!("{}", pic_name.display()),
-            "-filter_complex",
-            &format!(
-                "color={}:s={}x{}:r={}[bg];\
-                [bg][0]overlay=x=-t*{swip_pixels_per_sec}:shortest=1",
-                back_color, screen.0, screen.1, fps
-            ),
-            "-preset",
-            "fast",
-            "-y",
-            &format!("{}", video_name.display()),
-        ],
-        work_dir,
-    )?;
-    Ok(())
-}
-
-/// 生成视频封面或结尾视频。
-///
-/// # Parameters
-/// - `pic_name`: 素材图片名称。
-/// - `video_name`: 生成视频名称。
-/// - `video_time`: 视频时长（秒）。
-///
-/// # Errors
-/// - 如果 `FFmpeg` 命令执行失败，则返回 `Err`。
-///
-pub fn generate_ending_video(
-    pic_name: &Path,
-    video_name: &Path,
-    image_width: u32,
-    screen: (u32, u32),
-    swip_pixels_per_sec: u32,
-    back_color: &str,
-    fps: u32,
-    ending_sec: u32,
-    work_dir: &Path,
-) -> Result<()> {
-    let run_sec = (image_width - screen.0) / swip_pixels_per_sec;
-    ffmpeg(
-        &[
-            "-loglevel",
-            "warning",
-            "-r",
-            "1",
-            "-loop",
-            "1",
-            "-i",
-            &format!("{}", pic_name.display()),
-            "-filter_complex",
-            &format!(
-                "color={back_color}:s={}x{}:r={fps}[bg];\
-                [bg][0]overlay=x=-t*{swip_pixels_per_sec}:enable='lte(n,{})',scale=1920:1080[slide];\
-                [0]crop=1920:1080:2880:0[right_end]; \
-                [bg][right_end]overlay,scale=1920:1080[freeze];\
-                [freeze]loop=120:size=1:start=0[freeze_2sec]; \
-                [slide][freeze_2sec]concat=n=2:v=1:a=0,format=yuv420p[v]",
-                screen.0,
-                screen.1,
-                run_sec * fps
-            ),
-            "-map",
-            "[v]",
-            "-preset",
-            "fast",
-            "-t",
-            &(run_sec + ending_sec).to_string(),
-            "-y",
-            &format!("{}", video_name.display()),
-        ],
-        work_dir,
-    )?;
-    Ok(())
-}
-
-/// 生成视频封面或结尾视频。
-///
-/// # Parameters
-/// - `pic_name`: 素材图片名称。
-/// - `video_name`: 生成视频名称。
-/// - `video_time`: 视频时长（秒）。
-///
-/// # Errors
-/// - 如果 `FFmpeg` 命令执行失败，则返回 `Err`。
-///
-pub fn generate_ending2_video(
-    pic_name: &Path,
-    video_name: &Path,
-    image_width: u32,
-    screen: (u32, u32),
-    swip_pixels_per_sec: u32,
-    back_color: &str,
-    fps: u32,
-    ending_sec: u32,
-    work_dir: &Path,
-) -> Result<()> {
-    let run_sec = (image_width - screen.0) / swip_pixels_per_sec;
-    ffmpeg(
-        &[
-            "-loglevel",
-            "warning",
-            "-r",
-            "1",
-            "-loop",
-            "1",
-            "-i",
-            &format!("{}", pic_name.display()),
-            "-filter_complex",
-            &format!(
-                "color={back_color}:s={}x{}:r={fps}[bg];\
-                [0]crop=1920:1080:2880:0,trim=start_frame=0:end_frame=1,setpts=N/60/TB[right_end]; \
-                [bg][right_end]overlay,scale=1920:1080[freeze];\
-                [freeze]loop=120:size=1:start=0",
-                screen.0, screen.1,
-            ),
-            "-preset",
-            "fast",
-            "-t",
-            &(run_sec + ending_sec).to_string(),
-            "-y",
-            &format!("{}", video_name.display()),
-        ],
-        work_dir,
-    )?;
-    Ok(())
+    let (width, height) = screen;
+    let ffmpeg_args = format!(
+        "-r 1 -loop 1 -i {} \
+        -filter_complex \
+        color={back_color}:s={width}x{height}:r={fps}[bg];\
+        [bg][0]overlay=x='-{swip_pixels_per_sec}*clip(t,0,{move_sec})' \
+        -c:v {encoder} -crf 18 -preset fast -movflags +faststart -t {} {}",
+        pic_name.display(),
+        move_sec + static_sec,
+        video_name.display()
+    );
+    ffmpeg(work_dir, ffmpeg_args.split_ascii_whitespace())
 }
 
 /// 合并多个文件为单个输出文件，使用ffmpeg的concat协议
@@ -255,55 +168,32 @@ pub fn generate_ending2_video(
 /// # Errors
 /// - 如果文件写入或 `FFmpeg` 命令执行失败，则返回 `Err`。
 ///
-pub fn combain(mut results: Vec<PathBuf>, work_dir: &Path, save_path: &Path) -> Result<()> {
-    use std::fmt::Write;
+pub fn combain(results: &mut Vec<PathBuf>, work_dir: &Path, save_path: &Path) -> Result<()> {
     // 构建ffmpeg concat协议要求的输入文件列表字符串
-    // 格式示例：file '/path/to/file1'\nfile '/path/to/file2'
-    let result_str =
-        results
-            .iter()
-            .fold(String::with_capacity(results.len() * 20), |mut init, s| {
-                let _ = writeln!(init, "file {}", s.to_string_lossy());
-                init
-            });
+    // 格式示例：
+    //file /path/to/file1
+    //file /path/to/file2
+    let result_str: String = results
+        .iter()
+        .filter_map(|s| {
+            s.to_str()
+                .and_then(|ss| ss.ends_with("mp4").then(|| format!("file {}\n", ss)))
+        })
+        .collect();
 
     // 将文件列表写入临时文本文件
-    let list_file = work_dir.join("list.txt");
-    std::fs::write(&list_file, result_str)?;
+    let list_file = "list.txt";
+    std::fs::write(work_dir.join(list_file), result_str)?;
+    results.push(PathBuf::from(list_file));
 
-    // 调用ffmpeg执行合并操作参数说明：
-    // -f concat 指定concat分离器
-    // -i 输入文件列表
-    // -c copy 使用流拷贝模式（不重新编码）
-    // -y 覆盖输出文件
-    ffmpeg(
-        &[
-            "-loglevel",
-            "warning",
-            "-f",
-            "concat",
-            "-i",
-            &list_file.to_string_lossy(),
-            "-c",
-            "copy",
-            "-y",
-            &save_path.to_string_lossy(),
-        ],
-        work_dir,
-    )?;
+    // 调用ffmpeg执行合并操作
+    let ffmpeg_args = format!(
+        "-f concat -i {list_file} -c copy -y {}",
+        save_path.display()
+    );
+    ffmpeg(work_dir, ffmpeg_args.split_ascii_whitespace())?;
 
     println!("{} successed", save_path.display());
-
-    // 清理临时文件（包含两个步骤）：
-    // 1. 删除文件列表
-    // 2. 删除所有中间结果文件及其对应的png文件
-    let _ = std::fs::remove_file(&list_file);
-    for result in results.iter_mut() {
-        let _ = std::fs::remove_file(work_dir.join(&result));
-        result.set_extension("png");
-        let _ = std::fs::remove_file(work_dir.join(result));
-    }
-    println!("cleanup successed");
     Ok(())
 }
 
@@ -320,9 +210,16 @@ pub fn combain(mut results: Vec<PathBuf>, work_dir: &Path, save_path: &Path) -> 
 /// - 无法执行ffmpeg命令时返回IO错误
 /// - ffmpeg进程返回非零状态码时打印stderr到控制台并返回Other类型错误
 ///
-pub fn ffmpeg(args: &[&str], work_dir: &Path) -> Result<()> {
+pub fn ffmpeg<I, S>(work_dir: &Path, args: I) -> Result<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
     let command = Command::new("ffmpeg")
         .current_dir(work_dir)
+        .arg("-loglevel")
+        .arg("warning")
+        .arg("-y")
         .args(args)
         .output()?;
     if !command.status.success() {
@@ -330,28 +227,4 @@ pub fn ffmpeg(args: &[&str], work_dir: &Path) -> Result<()> {
         return Err(format!("FFmpeg command failed: {}", put).into());
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::time::Instant;
-
-    #[test]
-    fn test_ending() {
-        let start = Instant::now();
-        generate_ending_video(
-            Path::new(r"00.png"),
-            Path::new(r"01.mp4"),
-            10 * 480,
-            (1920, 1080),
-            160,
-            "gray",
-            60,
-            4,
-            Path::new(r"D:\program\DataToVideo\make_video\work"),
-        )
-        .unwrap();
-        println!("{} ms", start.elapsed().as_millis());
-    }
 }

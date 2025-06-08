@@ -1,8 +1,11 @@
 use std::{path::Path, time::Instant};
-use to_video::Result;
+use to_video::{Result, test_encoder};
 use to_video_cmd::parse;
 
 fn main() -> Result<()> {
+    let encoders = test_encoder()?;
+    println!("Useable encoders: {:?}", encoders);
+
     let t = Instant::now();
 
     let video_builder = parse()?;

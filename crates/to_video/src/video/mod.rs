@@ -2,14 +2,16 @@ pub mod config;
 pub mod ffmpeg;
 pub mod slide;
 
-use crate::Result;
+use crate::{Result, video::ffmpeg::generate_cover_video};
 use ab_glyph::FontArc;
-use ffmpeg::{combain, combain_slides, generate_endpoint_video, generate_mid_video};
-use image::GenericImageView;
+use ffmpeg::{combain, combain_slides, generate_mid_video};
 use slide::{Operation, Slide};
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
-pub use config::{VideoConfig, VideoConfigBuilder};
+pub use config::{MotionType, VideoConfig, VideoConfigBuilder};
 
 pub struct Video {
     chunks: Vec<Vec<Slide>>,
@@ -51,49 +53,63 @@ impl Video {
         F: Fn(&Path, usize, usize) -> std::result::Result<(), String>,
     {
         let chunks_len = self.chunks.len();
-        let mut results = Vec::with_capacity(chunks_len + 2);
 
         let font_buf = fs::read(&self.config.font)?;
         let font = FontArc::try_from_vec(font_buf).map_err(|_| "Invalid font file")?;
         let VideoConfig {
+            encoder,
             screen,
             fps,
             ref work_dir,
             ref back_color,
             cover_sec,
+            motion_type,
             ending_sec,
             swip_pixels_per_sec,
             width_slides,
             ref save_path,
+            overlap,
             split_line_color,
+            clean_temp,
             ..
         } = self.config;
+        let mut results = Vec::with_capacity(chunks_len * 2 + 1 + overlap as usize);
 
         for (index, slides) in self.chunks.into_iter().enumerate() {
             let slides_len = slides.len();
 
-            let target = combain_slides(&slides, &font, width_slides, screen, split_line_color)?;
             if index == 0 {
-                let cover = target.crop_imm(0, 0, screen.0, screen.1);
-                let cover_pic_name = Path::new("cover.png");
-                // 保存组合后的图像
-                cover.save(work_dir.join(cover_pic_name))?;
+                let cover_imgs = (0..overlap as usize)
+                    .map(|i| {
+                        let img =
+                            slides[i].render((width_slides, screen.1), &font, split_line_color)?;
+                        let cover_pic_name = format!("cover_{i}.png");
+                        img.save(work_dir.join(&cover_pic_name))?;
+                        results.push(PathBuf::from(&cover_pic_name));
+                        Ok(cover_pic_name)
+                    })
+                    .collect::<Result<Vec<_>>>()?;
 
-                let cover_video_name = cover_pic_name.with_extension("mp4");
+                let cover_video_name = PathBuf::from("cover.mp4");
 
-                generate_endpoint_video(
-                    cover_pic_name,
-                    &cover_video_name,
+                generate_cover_video(
+                    &encoder,
+                    cover_imgs,
                     cover_sec,
                     back_color,
                     screen,
+                    width_slides,
                     fps,
+                    motion_type,
                     work_dir,
+                    &cover_video_name,
                 )?;
 
-                handle_progress(&cover_video_name, index + 1, chunks_len + 2)?;
+                handle_progress(&cover_video_name, index + 1, chunks_len + 1)?;
                 results.push(cover_video_name);
             }
+
+            let target = combain_slides(&slides, &font, width_slides, screen, split_line_color)?;
 
             // 保存组合后的图像
             let mid_pic_name = format!("{index:0>2}.png");
@@ -102,44 +118,39 @@ impl Video {
 
             let mid_video_name = mid_pic_name.with_extension("mp4");
             let image_width = slides_len as u32 * width_slides;
+            let move_sec = (image_width - screen.0) / swip_pixels_per_sec;
+            let static_sec = if index == chunks_len - 1 {
+                ending_sec
+            } else {
+                0
+            };
 
             generate_mid_video(
+                &encoder,
                 mid_pic_name,
                 &mid_video_name,
-                image_width,
                 screen,
                 swip_pixels_per_sec,
                 back_color,
                 fps,
+                move_sec,
+                static_sec,
                 work_dir,
             )?;
-            handle_progress(&mid_video_name, index + 2, chunks_len + 2)?;
+            handle_progress(&mid_video_name, index + 2, chunks_len + 1)?;
+            results.push(mid_pic_name.to_path_buf());
             results.push(mid_video_name);
-
-            if index == chunks_len - 1 {
-                let w = target.dimensions().0;
-                let ending = target.crop_imm(w - screen.0, 0, screen.0, screen.1);
-                let ending_pic_name = Path::new("ending.png");
-                // 保存组合后的图像
-                ending.save(work_dir.join(ending_pic_name))?;
-
-                let ending_video_name = ending_pic_name.with_extension("mp4");
-
-                generate_endpoint_video(
-                    ending_pic_name,
-                    &ending_video_name,
-                    ending_sec,
-                    back_color,
-                    screen,
-                    fps,
-                    work_dir,
-                )?;
-                handle_progress(&ending_video_name, index + 3, chunks_len + 2)?;
-                results.push(ending_video_name);
-            }
         }
 
-        combain(results, work_dir, save_path)?;
+        combain(&mut results, work_dir, save_path)?;
+
+        if clean_temp {
+            // 清理临时文件：
+            for result in results.iter() {
+                let _ = std::fs::remove_file(work_dir.join(result));
+            }
+            println!("cleanup successed");
+        }
         Ok(())
     }
 }

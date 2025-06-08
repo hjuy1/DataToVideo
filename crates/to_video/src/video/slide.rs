@@ -107,47 +107,7 @@ impl Operation {
 
 impl PartialEq for Operation {
     fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                Self::Image {
-                    pos: l_pos,
-                    z_index: l_z_index,
-                },
-                Self::Image {
-                    pos: r_pos,
-                    z_index: r_z_index,
-                },
-            ) => l_pos == r_pos && l_z_index == r_z_index,
-            (
-                Self::Text {
-                    scale: l_scale,
-                    color: l_color,
-                    pos: l_pos,
-                    z_index: l_z_index,
-                },
-                Self::Text {
-                    scale: r_scale,
-                    color: r_color,
-                    pos: r_pos,
-                    z_index: r_z_index,
-                },
-            ) => {
-                l_scale == r_scale && l_color == r_color && l_pos == r_pos && l_z_index == r_z_index
-            }
-            (
-                Self::Color {
-                    color: l_color,
-                    pos: l_pos,
-                    z_index: l_z_index,
-                },
-                Self::Color {
-                    color: r_color,
-                    pos: r_pos,
-                    z_index: r_z_index,
-                },
-            ) => l_color == r_color && l_pos == r_pos && l_z_index == r_z_index,
-            _ => false,
-        }
+        self.z_index() == other.z_index()
     }
 }
 

@@ -8,3 +8,4 @@ tool_py
 /crates/get_data
 /crates/parse_data
 *.mp4
+**/test
