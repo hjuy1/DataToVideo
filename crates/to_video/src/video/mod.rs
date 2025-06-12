@@ -11,7 +11,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub use config::{MotionType, VideoConfig, VideoConfigBuilder};
+pub use config::{VideoConfig, VideoConfigBuilder};
 
 pub struct Video {
     chunks: Vec<Vec<Slide>>,
@@ -75,39 +75,42 @@ impl Video {
         } = self.config;
         let mut results = Vec::with_capacity(chunks_len * 2 + 1 + overlap as usize);
 
+        {
+            let cover_imgs = (0..overlap as usize)
+                .map(|i| {
+                    let img = self.chunks[0][i].render(
+                        (width_slides, screen.1),
+                        &font,
+                        split_line_color,
+                    )?;
+                    let cover_pic_name = format!("cover_{i}.png");
+                    img.save(work_dir.join(&cover_pic_name))?;
+                    results.push(PathBuf::from(&cover_pic_name));
+                    Ok(cover_pic_name)
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            let cover_video_name = PathBuf::from("cover.mp4");
+
+            generate_cover_video(
+                &encoder,
+                cover_imgs,
+                cover_sec,
+                back_color,
+                screen,
+                width_slides,
+                fps,
+                motion_type,
+                work_dir,
+                &cover_video_name,
+            )?;
+
+            handle_progress(&cover_video_name, 1, chunks_len + 1)?;
+            results.push(cover_video_name);
+        }
+
         for (index, slides) in self.chunks.into_iter().enumerate() {
             let slides_len = slides.len();
-
-            if index == 0 {
-                let cover_imgs = (0..overlap as usize)
-                    .map(|i| {
-                        let img =
-                            slides[i].render((width_slides, screen.1), &font, split_line_color)?;
-                        let cover_pic_name = format!("cover_{i}.png");
-                        img.save(work_dir.join(&cover_pic_name))?;
-                        results.push(PathBuf::from(&cover_pic_name));
-                        Ok(cover_pic_name)
-                    })
-                    .collect::<Result<Vec<_>>>()?;
-
-                let cover_video_name = PathBuf::from("cover.mp4");
-
-                generate_cover_video(
-                    &encoder,
-                    cover_imgs,
-                    cover_sec,
-                    back_color,
-                    screen,
-                    width_slides,
-                    fps,
-                    motion_type,
-                    work_dir,
-                    &cover_video_name,
-                )?;
-
-                handle_progress(&cover_video_name, index + 1, chunks_len + 1)?;
-                results.push(cover_video_name);
-            }
 
             let target = combain_slides(&slides, &font, width_slides, screen, split_line_color)?;
 

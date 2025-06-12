@@ -1,14 +1,7 @@
+use super::ffmpeg::MotionType;
 use crate::{Result, color::Color};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
-#[derive(Serialize, Deserialize, Clone, Copy)]
-pub enum MotionType {
-    Linear,    // 匀速运动
-    EaseIn,    // 缓入（变速）
-    EaseOut,   // 缓出（变速）
-    EaseInOut, // 缓入缓出（变速）
-}
 
 pub struct VideoConfig {
     pub(super) encoder: String,

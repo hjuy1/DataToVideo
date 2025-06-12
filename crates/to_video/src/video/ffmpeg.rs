@@ -1,12 +1,31 @@
-use super::config::MotionType;
 use crate::{Result, color::Color, slide::Slide};
 use ab_glyph::FontArc;
 use image::{DynamicImage, GenericImage};
+use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
     process::Command,
 };
+
+#[derive(Serialize, Deserialize)]
+pub enum MotionType {
+    Linear,    // 匀速运动
+    EaseIn,    // 缓入
+    EaseOut,   // 缓出
+    EaseInOut, // 缓入缓出
+}
+
+impl MotionType {
+    pub fn get_motion_range(&self, ranges: &str) -> String {
+        match self {
+            MotionType::Linear => format!("1-{ranges}"),
+            MotionType::EaseIn => format!("cos({ranges}*3.14/2)"),
+            MotionType::EaseOut => format!("1-sin({ranges}*3.14/2)"),
+            MotionType::EaseInOut => format!("(cos({ranges}*3.14)+1)/2"),
+        }
+    }
+}
 
 /// 将多个图像块组合成一个完整的图像。
 ///
@@ -42,17 +61,6 @@ pub fn combain_slides(
     Ok(target)
 }
 
-impl MotionType {
-    pub fn get_motion_range(&self, ranges: &str) -> String {
-        match self {
-            MotionType::Linear => ranges.to_string(),
-            MotionType::EaseIn => format!("sin({ranges}*3.14/2-3.14/2)+1"),
-            MotionType::EaseOut => format!("sin({ranges}*3.14/2)"),
-            MotionType::EaseInOut => format!("(sin({ranges}*3.14-3.14/2)+1)/2"),
-        }
-    }
-}
-
 pub fn generate_cover_video(
     encoder: &str,
     input_images: Vec<String>,
@@ -65,6 +73,7 @@ pub fn generate_cover_video(
     work_dir: &Path,
     video_name: &Path,
 ) -> Result<()> {
+    let (width, height) = screen;
     let num_images = input_images.len();
     let fade_duration = cover_sec / num_images as f32;
 
@@ -74,30 +83,27 @@ pub fn generate_cover_video(
 
     // 创建基础画布
     filters.push_str(&format!(
-        "color={back_color}:s={}x{}:r={fps}[base];",
-        screen.0, screen.1
+        "color={back_color}:s={width}x{height}:r={fps}[base];"
     ));
 
     // 处理每张图片
     for (i, img) in input_images.iter().enumerate() {
-        inputs.push_str(&format!("-i {} ", img));
+        inputs.push_str(&format!("-i {img} "));
+
         let start_time = i as f32 * fade_duration;
 
         // 图片输入和格式转换
         filters.push_str(&format!(
-            "[{}:v]format=yuva420p,setpts=PTS-STARTPTS+{}/TB[v{}];",
-            i, start_time, i
+            "[{i}:v]format=yuva420p,setpts=PTS-STARTPTS+{start_time}/TB[v{i}];"
         ));
 
-        // 计算水平位置（x坐标）
+        // 计算水平位置（x坐标）和垂直运动（y坐标）
         let x_pos = i as u32 * width_slides;
 
-        // 计算垂直运动（y坐标）
         let ranges = motion_type.get_motion_range(&format!(
-            "clip(t-{},0,{fade_duration})/{fade_duration}",
-            i as f32 * fade_duration,
+            "clip(t-{start_time},0,{fade_duration})/{fade_duration}",
         ));
-        let y_expr = format!("{}-({ranges})*{}", screen.1, screen.1);
+        let y_expr = format!("({ranges})*{height}");
 
         // 叠加到画布
         let input = if i == 0 {
@@ -106,8 +112,7 @@ pub fn generate_cover_video(
             format!("tmp{}", i - 1)
         };
         filters.push_str(&format!(
-            "[{}][v{}]overlay=x={}:y='{}'[tmp{}];",
-            input, i, x_pos, y_expr, i
+            "[{input}][v{i}]overlay=x={x_pos}:y='{y_expr}'[tmp{i}];"
         ));
     }
 
