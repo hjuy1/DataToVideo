@@ -78,7 +78,10 @@ pub fn generate_cover_video(
     let fade_duration = cover_sec / num_images as f32;
 
     // 添加输入图片
-    let mut inputs = String::new();
+    let inputs: String = input_images
+        .iter()
+        .map(|img| format!("-i {img} "))
+        .collect();
     let mut filters = String::new();
 
     // 创建基础画布
@@ -87,9 +90,7 @@ pub fn generate_cover_video(
     ));
 
     // 处理每张图片
-    for (i, img) in input_images.iter().enumerate() {
-        inputs.push_str(&format!("-i {img} "));
-
+    for i in 0..num_images {
         let start_time = i as f32 * fade_duration;
 
         // 图片输入和格式转换
@@ -118,7 +119,7 @@ pub fn generate_cover_video(
 
     let ffmpeg_args = format!(
         "{inputs} -filter_complex {} -map [tmp{}] \
-        -c:v {encoder} -crf 18 -preset fast -movflags +faststart -t {cover_sec} {}",
+        -c:v {encoder} -r 60 -b:v 4000k -preset fast -movflags +faststart -t {cover_sec} {}",
         filters.trim_end_matches(';'),
         num_images - 1,
         video_name.display()
@@ -156,7 +157,7 @@ pub fn generate_mid_video(
         -filter_complex \
         color={back_color}:s={width}x{height}:r={fps}[bg];\
         [bg][0]overlay=x='-{swip_pixels_per_sec}*clip(t,0,{move_sec})' \
-        -c:v {encoder} -crf 18 -preset fast -movflags +faststart -t {} {}",
+        -c:v {encoder} -r 60 -b:v 4000k -preset fast -movflags +faststart -t {} {}",
         pic_name.display(),
         move_sec + static_sec,
         video_name.display()

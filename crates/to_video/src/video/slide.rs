@@ -34,7 +34,9 @@ impl Element {
         match self {
             Element::Image { path, pos } => {
                 let rect = pos.to_rect(width);
-                let img_element = image::open(path)?.thumbnail(rect.width(), rect.height());
+                let img_element = image::open(path)
+                    .map_err(|e| format!("{path:?}: {e}"))?
+                    .thumbnail(rect.width(), rect.height());
                 let (img_w, img_h) = img_element.dimensions();
                 img.copy_from(
                     &img_element,
